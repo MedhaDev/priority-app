@@ -25,10 +25,10 @@ const globalStyles = `
     font-family: 'DM Sans', sans-serif; font-weight: 500; text-transform: uppercase;
   }
   .reorder-btn {
-    background: none; border: none; color: #2a2a2a; font-size: 9px;
+    background: none; border: none; color: #888; font-size: 9px;
     padding: 0 1px; line-height: 1; transition: color 0.1s; display: block;
   }
-  .reorder-btn:hover { color: #666; }
+  .reorder-btn:hover { color: #aaa; }
 `;
 
 const QUADRANTS = [
@@ -94,8 +94,8 @@ function SubTasks({ subtasks, setSubtasks, color }) {
             style={{ width: 11, height: 11, borderRadius: 2, border: `1px solid ${color}44`, background: st.done ? color : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
             {st.done && <span style={{ color: "#000", fontSize: 7, fontWeight: 700 }}>✓</span>}
           </button>
-          <span style={{ fontSize: 12, color: st.done ? "#2a2a2a" : "#777", textDecoration: st.done ? "line-through" : "none", flex: 1 }}>{st.text}</span>
-          <button onClick={() => setSubtasks(subtasks.filter(s => s.id !== st.id))} style={{ background: "none", border: "none", color: "#222", fontSize: 10, padding: "0 2px" }}>✕</button>
+          <span style={{ fontSize: 12, color: st.done ? "#444" : "#aaa", textDecoration: st.done ? "line-through" : "none", flex: 1 }}>{st.text}</span>
+          <button onClick={() => setSubtasks(subtasks.filter(s => s.id !== st.id))} style={{ background: "none", border: "none", color: "#888", fontSize: 10, padding: "0 2px" }}>✕</button>
         </div>
       ))}
       {adding ? (
@@ -109,7 +109,7 @@ function SubTasks({ subtasks, setSubtasks, color }) {
           <button onClick={submit} style={{ background: color, color: "#000", border: "none", borderRadius: 3, padding: "3px 9px", fontSize: 11, fontWeight: 600 }}>+</button>
         </div>
       ) : (
-        <button onClick={() => setAdding(true)} style={{ background: "none", border: "none", color: "#2a2a2a", fontSize: 11, padding: "3px 0" }}>
+        <button onClick={() => setAdding(true)} style={{ background: "none", border: "none", color: "#777", fontSize: 11, padding: "3px 0" }}>
           + subtask
         </button>
       )}
@@ -147,7 +147,7 @@ function TaskCard({ task, color, onToggle, onDelete, onFocus, onUpdateSubtasks, 
               {task.text}
             </span>
             {task.subtasks.length > 0 && (
-              <span style={{ fontSize: 10, color: color + "55", whiteSpace: "nowrap" }}>{doneCount}/{task.subtasks.length}</span>
+              <span style={{ fontSize: 10, color: color + "cc", whiteSpace: "nowrap" }}>{doneCount}/{task.subtasks.length}</span>
             )}
           </div>
           {task.subtasks.length > 0 && (
@@ -157,31 +157,31 @@ function TaskCard({ task, color, onToggle, onDelete, onFocus, onUpdateSubtasks, 
           )}
           <div style={{ display: "flex", gap: 10, marginTop: 3, flexWrap: "wrap" }}>
             {task.created_at && (
-              <span style={{ fontSize: 10, color: "#222" }}>
+              <span style={{ fontSize: 10, color: "#999" }}>
                 {new Date(task.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
               </span>
             )}
             {task.completed_at && (
-              <span style={{ fontSize: 10, color: color + "44" }}>
+              <span style={{ fontSize: 10, color: color + "dd" }}>
                 ✓ {new Date(task.completed_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
               </span>
             )}
             {task.focus_sessions > 0 && (
-              <span style={{ fontSize: 10, color: "#2a2a2a" }}>◎ {task.focus_sessions}</span>
+              <span style={{ fontSize: 10, color: "#999" }}>◎ {task.focus_sessions}</span>
             )}
           </div>
         </div>
         <div style={{ display: "flex", gap: 2, flexShrink: 0, alignItems: "center" }}>
           <button onClick={() => setExpanded(e => !e)}
-            style={{ background: "none", border: "none", color: "#2a2a2a", fontSize: 12, padding: "1px 4px", lineHeight: 1 }}>
+            style={{ background: "none", border: "none", color: "#999", fontSize: 12, padding: "1px 4px", lineHeight: 1 }}>
             {expanded ? "−" : "+"}
           </button>
           <button onClick={onFocus}
-            style={{ background: "none", border: `1px solid ${color}22`, color: color + "66", fontSize: 9, borderRadius: 2, padding: "2px 5px", letterSpacing: 0.4, textTransform: "uppercase" }}>
+            style={{ background: "none", border: `1px solid ${color}33`, color: color + "dd", fontSize: 9, borderRadius: 2, padding: "2px 5px", letterSpacing: 0.4, textTransform: "uppercase" }}>
             focus
           </button>
           <button onClick={onDelete}
-            style={{ background: "none", border: "none", fontSize: 10, color: "#1e1e1e", padding: "1px 3px" }}>✕</button>
+            style={{ background: "none", border: "none", fontSize: 10, color: "#999", padding: "1px 3px" }}>✕</button>
         </div>
       </div>
       {expanded && (
@@ -322,12 +322,12 @@ export default function App() {
                   {running ? "Pause" : "Start"}
                 </button>
                 <button onClick={() => { if (focusTask) logSession(focusTask, false); setTimer(25*60); setRunning(false); sessionStartRef.current = null; }}
-                  style={{ background: "transparent", color: "#333", border: "1px solid #111", borderRadius: 4, padding: "11px 20px", fontSize: 12 }}>
+                  style={{ background: "transparent", color: "#777", border: "1px solid #111", borderRadius: 4, padding: "11px 20px", fontSize: 12 }}>
                   Reset
                 </button>
               </div>
               <button onClick={() => { if (running && focusTask) logSession(focusTask, false); setFocusMode(false); setRunning(false); sessionStartRef.current = null; }}
-                style={{ background: "none", border: "none", color: "#2a2a2a", fontSize: 11, letterSpacing: 0.5, marginTop: 4 }}>
+                style={{ background: "none", border: "none", color: "#777", fontSize: 11, letterSpacing: 0.5, marginTop: 4 }}>
                 Exit focus mode
               </button>
             </div>
@@ -350,26 +350,26 @@ export default function App() {
               </button>
             )}
             <button onClick={exportCSV}
-              style={{ background: "none", border: "1px solid #111", borderRadius: 3, color: "#333", fontSize: 11, padding: "8px 14px", letterSpacing: 0.8, textTransform: "uppercase" }}>
+              style={{ background: "none", border: "1px solid #555", borderRadius: 3, color: "#bbb", fontSize: 11, padding: "8px 14px", letterSpacing: 0.8, textTransform: "uppercase" }}>
               Export CSV
             </button>
           </div>
         </div>
 
         {/* ADD BAR */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "#080808", borderRadius: 3, padding: "10px 14px", border: "1px solid #111" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "#111", borderRadius: 3, padding: "10px 14px", border: "1px solid #444" }}>
           <input
             style={{ flex: 1, minWidth: 200, background: "transparent", border: "none", color: "#ddd", padding: "5px 4px", fontSize: 14, outline: "none" }}
-            placeholder="Add a task…"
+            placeholder="Add a task…" 
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && addTask()}/>
           <button className="tag-btn" onClick={() => setUrgent(u => !u)}
-            style={{ borderColor: urgent ? "#FF4500" : "#1a1a1a", background: urgent ? "#FF450010" : "transparent", color: urgent ? "#FF4500" : "#333" }}>
+            style={{ borderColor: urgent ? "#FF4500" : "#555", background: urgent ? "#FF450018" : "transparent", color: urgent ? "#FF4500" : "#bbb" }}>
             Urgent
           </button>
           <button className="tag-btn" onClick={() => setImportant(i => !i)}
-            style={{ borderColor: important ? "#C8A84B" : "#1a1a1a", background: important ? "#C8A84B10" : "transparent", color: important ? "#C8A84B" : "#333" }}>
+            style={{ borderColor: important ? "#C8A84B" : "#555", background: important ? "#C8A84B18" : "transparent", color: important ? "#C8A84B" : "#bbb" }}>
             Important
           </button>
           <button onClick={addTask}
@@ -392,17 +392,18 @@ export default function App() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <div>
                     <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 15, color: "#fff", fontWeight: 400 }}>{q.label}</div>
-                    <div style={{ fontSize: 10, color: "#2a2a2a", letterSpacing: 0.8, marginTop: 2, textTransform: "uppercase" }}>{q.sub}</div>
+                    <div style={{ fontSize: 10, color: "#888", letterSpacing: 0.8, marginTop: 2, textTransform: "uppercase" }}>{q.sub}</div>
                   </div>
                   <div style={{ width: 7, height: 7, borderRadius: "50%", background: q.color, opacity: 0.7 }}/>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
                   {qTasks.length === 0 && (
-                    <p style={{ color: "#181818", fontSize: 12, textAlign: "center", marginTop: 20 }}>Drop tasks here</p>
+                    <p style={{ color: "#777", fontSize: 12, textAlign: "center", marginTop: 20 }}>Drop tasks here</p>
                   )}
                   {qTasks.map((task, idx) => (
-                    <div key={task.id} draggable onDragStart={() => setDragId(task.id)}>
+                    <div key={task.id} draggable
+                      onDragStart={(e) => { if (e.target.closest("button,input")) { e.preventDefault(); return; } setDragId(task.id); }}>
                       <TaskCard
                         task={task} color={q.color}
                         onToggle={() => updateTask(task.id, t => ({ ...t, done: !t.done, completed_at: !t.done ? new Date().toISOString() : null }))}
@@ -429,13 +430,13 @@ export default function App() {
               <div key={q.id} style={{ display: "flex", alignItems: "center", gap: 7, background: "#080808", borderRadius: 3, padding: "6px 12px", border: "1px solid #111" }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: q.color, opacity: 0.7 }}/>
                 <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 13, color: "#fff" }}>{done}/{total}</span>
-                <span style={{ fontSize: 10, color: "#2a2a2a", textTransform: "uppercase", letterSpacing: 0.5 }}>{q.label}</span>
+                <span style={{ fontSize: 10, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>{q.label}</span>
               </div>
             );
           })}
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 7, background: "#080808", borderRadius: 3, padding: "6px 14px", border: "1px solid #111" }}>
             <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 13, color: "#fff" }}>{tasks.filter(t => t.done).length}/{tasks.length}</span>
-            <span style={{ fontSize: 10, color: "#333", textTransform: "uppercase", letterSpacing: 0.5 }}>Total</span>
+            <span style={{ fontSize: 10, color: "#777", textTransform: "uppercase", letterSpacing: 0.5 }}>Total</span>
           </div>
         </div>
 
