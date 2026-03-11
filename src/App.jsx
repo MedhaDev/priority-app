@@ -1,124 +1,66 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 const globalStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Bebas+Neue&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0e0e10; font-family: 'Outfit', sans-serif; color: #ccc; min-height: 100vh; }
+  body { background: #000; font-family: 'DM Sans', sans-serif; color: #ccc; min-height: 100vh; }
   ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: #111; }
-  ::-webkit-scrollbar-thumb { background: #2a2a2e; border-radius: 2px; }
-  input, textarea, button { font-family: 'Outfit', sans-serif; }
+  ::-webkit-scrollbar-track { background: #000; }
+  ::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+  input, textarea, button { font-family: 'DM Sans', sans-serif; }
   button { cursor: pointer; }
-  .task-card { transition: transform 0.15s, box-shadow 0.15s; }
-  .task-card:hover { transform: translateX(2px); box-shadow: 0 2px 14px rgba(0,0,0,0.5); }
-  .qdrop.drag-over { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.15) !important; }
-  @keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
-  .fadein { animation: fadeIn 0.2s ease forwards; }
-  @keyframes wobble { 0%,100% { transform:rotate(-1.5deg); } 50% { transform:rotate(1.5deg); } }
-  .doodle-wrap:hover svg { animation: wobble 0.35s ease; }
-  .subtask-inp {
-    background: #ffffff08; border: 1px dashed #ffffff1a; border-radius: 5px;
-    color: #aaa; padding: 5px 8px; font-size: 11px; width: 100%;
-    font-family: 'IBM Plex Mono', monospace;
+  .task-card { transition: background 0.15s; }
+  .task-card:hover { background: #ffffff0a !important; }
+  .qdrop.drag-over { outline: 1px solid rgba(255,255,255,0.18) !important; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+  .fadein { animation: fadeIn 0.18s ease forwards; }
+  @keyframes confettiBurst {
+    0%   { opacity: 1; transform: translate(0,0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.3); }
   }
-  .subtask-inp::placeholder { color: #444; }
+  .confetti-piece { position: fixed; pointer-events: none; animation: confettiBurst 0.8s ease-out forwards; font-size: 18px; z-index: 9999; }
   .tag-btn {
-    border-radius: 5px; padding: 7px 13px; font-size: 11px;
-    border: 1px solid; transition: all 0.15s; letter-spacing: 0.5px;
-    font-family: 'IBM Plex Mono', monospace; font-weight: 500;
+    border-radius: 3px; padding: 5px 12px; font-size: 11px;
+    border: 1px solid; transition: all 0.12s; letter-spacing: 0.8px;
+    font-family: 'DM Sans', sans-serif; font-weight: 500; text-transform: uppercase;
   }
+  .reorder-btn {
+    background: none; border: none; color: #2a2a2a; font-size: 9px;
+    padding: 0 1px; line-height: 1; transition: color 0.1s; display: block;
+  }
+  .reorder-btn:hover { color: #666; }
 `;
 
-/* ── DOODLES ─────────────────────────────────────── */
-const Doodle = ({ id, color }) => {
-  const sw = "1.8";
-  if (id === "do") return (
-    <svg width="62" height="70" viewBox="0 0 64 72" fill="none">
-      <ellipse cx="32" cy="16" rx="10" ry="11" stroke={color} strokeWidth={sw} fill="none"/>
-      <circle cx="27" cy="14" r="1.8" fill={color}/>
-      <circle cx="37" cy="14" r="1.8" fill={color}/>
-      <path d="M27 20 Q32 18 37 20" stroke={color} strokeWidth="1.4" fill="none"/>
-      <path d="M26 8 L23 4M32 7 L32 3M38 8 L41 4" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
-      <path d="M32 27 L32 48" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M32 32 Q20 28 15 22" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M32 32 Q44 28 49 22" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M32 48 Q26 56 24 64" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M32 48 Q38 56 40 64" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <rect x="10" y="30" width="10" height="8" rx="1" stroke={color} strokeWidth="1.2" fill="none" transform="rotate(-20 15 34)"/>
-      <rect x="44" y="28" width="10" height="8" rx="1" stroke={color} strokeWidth="1.2" fill="none" transform="rotate(15 49 32)"/>
-      <path d="M12 32 L18 32M12 34.5 L18 34.5" stroke={color} strokeWidth="0.8" opacity="0.5" transform="rotate(-20 15 34)"/>
-    </svg>
-  );
-  if (id === "schedule") return (
-    <svg width="62" height="70" viewBox="0 0 64 72" fill="none">
-      <ellipse cx="32" cy="15" rx="10" ry="11" stroke={color} strokeWidth={sw} fill="none"/>
-      <circle cx="27.5" cy="13" r="1.8" fill={color}/>
-      <circle cx="36.5" cy="13" r="1.8" fill={color}/>
-      <path d="M28 19 Q32 22 36 19" stroke={color} strokeWidth="1.4" fill="none"/>
-      <path d="M32 26 L32 46" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M32 31 Q24 35 20 42" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M32 31 Q40 33 44 38" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <rect x="16" y="42" width="20" height="14" rx="2" stroke={color} strokeWidth="1.4" fill="none"/>
-      <path d="M26 42 L26 56" stroke={color} strokeWidth="1" opacity="0.4"/>
-      <path d="M19 46 L23 46M19 49 L23 49M19 52 L23 52" stroke={color} strokeWidth="0.9" opacity="0.6"/>
-      <path d="M38 38 L46 30" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-      <path d="M46 30 L49 27" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M32 46 Q28 54 26 62" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M32 46 Q36 54 38 62" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-    </svg>
-  );
-  if (id === "delegate") return (
-    <svg width="70" height="70" viewBox="0 0 72 72" fill="none">
-      <ellipse cx="18" cy="14" rx="9" ry="10" stroke={color} strokeWidth={sw} fill="none"/>
-      <circle cx="14" cy="12" r="1.6" fill={color}/>
-      <circle cx="22" cy="12" r="1.6" fill={color}/>
-      <path d="M14 18 Q18 21 22 18" stroke={color} strokeWidth="1.3" fill="none"/>
-      <path d="M18 24 L18 44" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M18 30 Q28 27 36 30" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M18 30 L12 40" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M18 44 L12 58M18 44 L24 58" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <rect x="31" y="26" width="11" height="9" rx="1.5" stroke={color} strokeWidth="1.4" fill="none"/>
-      <path d="M31 30 L42 30M36 26 L36 35" stroke={color} strokeWidth="0.9" opacity="0.6"/>
-      <path d="M38 20 L43 20M41 17 L44 20 L41 23" stroke={color} strokeWidth="1.3" strokeLinecap="round" fill="none"/>
-      <ellipse cx="56" cy="14" rx="9" ry="10" stroke={color} strokeWidth={sw} fill="none"/>
-      <circle cx="52" cy="12" r="1.6" fill={color}/>
-      <circle cx="60" cy="12" r="1.6" fill={color}/>
-      <path d="M52 18 Q56 22 60 18" stroke={color} strokeWidth="1.3" fill="none"/>
-      <path d="M56 24 L56 44" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M56 30 Q46 27 42 35" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M56 30 L62 40" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M56 44 L50 58M56 44 L62 58" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-    </svg>
-  );
-  if (id === "eliminate") return (
-    <svg width="62" height="70" viewBox="0 0 64 72" fill="none">
-      <ellipse cx="32" cy="12" rx="10" ry="11" stroke={color} strokeWidth={sw} fill="none"/>
-      <path d="M25 10 L29 10M35 10 L39 10" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
-      <path d="M27 17 Q32 20 37 17" stroke={color} strokeWidth="1.4" fill="none"/>
-      <text x="44" y="10" fill={color} fontSize="8" fontFamily="serif" opacity="0.5">z</text>
-      <text x="49" y="5" fill={color} fontSize="11" fontFamily="serif" opacity="0.35">z</text>
-      <path d="M10 46 Q32 38 54 46" stroke={color} strokeWidth="1.4" fill="none" opacity="0.4" strokeDasharray="3 2"/>
-      <path d="M10 44 L10 56M54 44 L54 56" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M32 23 Q28 32 12 40" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M32 23 Q40 28 50 34" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M12 40 Q10 43 10 44" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M12 40 Q16 44 18 48" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M50 34 Q53 40 54 44" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-      <path d="M50 34 Q48 40 46 46" stroke={color} strokeWidth={sw} strokeLinecap="round"/>
-    </svg>
-  );
-  return null;
-};
-
-/* ── DATA ────────────────────────────────────────── */
 const QUADRANTS = [
-  { id: "do",        label: "DO FIRST",  sub: "urgent + important",         color: "#e05c42", bg: "#160704", border: "#e05c42", desc: "on fire. do it now." },
-  { id: "schedule",  label: "SCHEDULE",  sub: "not urgent + important",     color: "#e8a825", bg: "#161004", border: "#e8a825", desc: "worth your future time." },
-  { id: "delegate",  label: "DELEGATE",  sub: "urgent + not important",     color: "#3dbdcc", bg: "#021012", border: "#3dbdcc", desc: "someone else can handle it." },
-  { id: "eliminate", label: "ELIMINATE", sub: "not urgent + not important", color: "#77778a", bg: "#101013", border: "#77778a", desc: "drop it. no guilt." },
+  { id: "do",        label: "Do First",  sub: "Urgent · Important",         color: "#FF4500", bg: "#030303", border: "#FF4500" },
+  { id: "schedule",  label: "Schedule",  sub: "Not Urgent · Important",     color: "#C8A84B", bg: "#030303", border: "#C8A84B" },
+  { id: "delegate",  label: "Delegate",  sub: "Urgent · Not Important",     color: "#6B9E8C", bg: "#030303", border: "#6B9E8C" },
+  { id: "eliminate", label: "Eliminate", sub: "Not Urgent · Not Important", color: "#666680", bg: "#030303", border: "#666680" },
 ];
 
 let nextId = 50;
+
+/* ── CONFETTI ─────────────────────────────────────── */
+function spawnConfetti(x, y) {
+  const pieces = ["✦", "♥", "✿", "★", "◆", "✸"];
+  const colors = ["#FF4500", "#C8A84B", "#6B9E8C", "#fff", "#FF8C69"];
+  const container = document.getElementById("confetti-root");
+  if (!container) return;
+  for (let i = 0; i < 10; i++) {
+    const el = document.createElement("span");
+    el.className = "confetti-piece";
+    el.textContent = pieces[Math.floor(Math.random() * pieces.length)];
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    el.style.color = colors[Math.floor(Math.random() * colors.length)];
+    const angle = (Math.random() * 360) * (Math.PI / 180);
+    const dist = 40 + Math.random() * 60;
+    el.style.setProperty("--tx", Math.cos(angle) * dist + "px");
+    el.style.setProperty("--ty", Math.sin(angle) * dist + "px");
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 900);
+  }
+}
 
 /* ── SUBTASKS ────────────────────────────────────── */
 function SubTasks({ subtasks, setSubtasks, color }) {
@@ -131,30 +73,44 @@ function SubTasks({ subtasks, setSubtasks, color }) {
     setVal(""); setAdding(false);
   };
 
+  const move = (idx, dir) => {
+    const arr = [...subtasks];
+    const swap = idx + dir;
+    if (swap < 0 || swap >= arr.length) return;
+    [arr[idx], arr[swap]] = [arr[swap], arr[idx]];
+    setSubtasks(arr);
+  };
+
   return (
-    <div style={{ marginTop: 8, paddingLeft: 10, borderLeft: `2px solid ${color}28` }}>
-      {subtasks.map(st => (
-        <div key={st.id} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
+    <div style={{ marginTop: 8, paddingLeft: 8, borderLeft: `1px solid ${color}22` }}>
+      {subtasks.map((st, idx) => (
+        <div key={st.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <button className="reorder-btn" onClick={() => move(idx, -1)}>▲</button>
+            <button className="reorder-btn" onClick={() => move(idx, 1)}>▼</button>
+          </div>
           <button
             onClick={() => setSubtasks(subtasks.map(s => s.id === st.id ? { ...s, done: !s.done } : s))}
-            style={{ width: 12, height: 12, borderRadius: 3, border: `1.5px solid ${color}66`, background: st.done ? color : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
-            {st.done && <span style={{ color: "#000", fontSize: 8, lineHeight: 1, fontWeight: 700 }}>x</span>}
+            style={{ width: 11, height: 11, borderRadius: 2, border: `1px solid ${color}44`, background: st.done ? color : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+            {st.done && <span style={{ color: "#000", fontSize: 7, fontWeight: 700 }}>✓</span>}
           </button>
-          <span style={{ fontSize: 12, color: st.done ? "#444" : "#999", textDecoration: st.done ? "line-through" : "none", flex: 1, letterSpacing: 0.2 }}>{st.text}</span>
-          <button onClick={() => setSubtasks(subtasks.filter(s => s.id !== st.id))} style={{ background: "none", border: "none", color: "#333", fontSize: 10, padding: "0 2px" }}>x</button>
+          <span style={{ fontSize: 12, color: st.done ? "#2a2a2a" : "#777", textDecoration: st.done ? "line-through" : "none", flex: 1 }}>{st.text}</span>
+          <button onClick={() => setSubtasks(subtasks.filter(s => s.id !== st.id))} style={{ background: "none", border: "none", color: "#222", fontSize: 10, padding: "0 2px" }}>✕</button>
         </div>
       ))}
       {adding ? (
         <div style={{ display: "flex", gap: 5, marginTop: 4 }}>
-          <input autoFocus className="subtask-inp" style={{ flex: 1 }} value={val}
+          <input autoFocus
+            style={{ flex: 1, background: "#ffffff04", border: `1px solid ${color}1a`, borderRadius: 3, color: "#999", padding: "5px 8px", fontSize: 12, fontFamily: "'DM Sans', sans-serif", outline: "none" }}
+            value={val}
             onChange={e => setVal(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") submit(); if (e.key === "Escape") { setAdding(false); setVal(""); } }}
-            placeholder="subtask name... (enter to save)"/>
-          <button onClick={submit} style={{ background: color, color: "#000", border: "none", borderRadius: 5, padding: "3px 9px", fontSize: 11, fontWeight: 700 }}>+</button>
+            placeholder="Subtask name…"/>
+          <button onClick={submit} style={{ background: color, color: "#000", border: "none", borderRadius: 3, padding: "3px 9px", fontSize: 11, fontWeight: 600 }}>+</button>
         </div>
       ) : (
-        <button onClick={() => setAdding(true)} style={{ background: "none", border: "none", color: color + "55", fontSize: 11, padding: "2px 0", letterSpacing: 0.4 }}>
-          + add subtask
+        <button onClick={() => setAdding(true)} style={{ background: "none", border: "none", color: "#2a2a2a", fontSize: 11, padding: "3px 0" }}>
+          + subtask
         </button>
       )}
     </div>
@@ -162,61 +118,74 @@ function SubTasks({ subtasks, setSubtasks, color }) {
 }
 
 /* ── TASK CARD ───────────────────────────────────── */
-function TaskCard({ task, color, onToggle, onDelete, onFocus, onUpdateSubtasks, isDoQ }) {
+function TaskCard({ task, color, onToggle, onDelete, onFocus, onUpdateSubtasks, onMoveUp, onMoveDown }) {
   const [expanded, setExpanded] = useState(false);
   const doneCount = task.subtasks.filter(s => s.done).length;
 
+  const handleToggle = (e) => {
+    if (!task.done) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      spawnConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    }
+    onToggle();
+  };
+
   return (
-    <div className="task-card fadein" style={{ background: "#ffffff06", borderRadius: 7, borderLeft: `3px solid ${color}`, opacity: task.done ? 0.38 : 1, overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "9px 10px" }}>
-        <button onClick={onToggle}
-          style={{ width: 15, height: 15, marginTop: 2, borderRadius: 3, border: `1.5px solid ${color}`, background: task.done ? color : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
-          {task.done && <span style={{ color: "#000", fontSize: 9, fontWeight: 700 }}>x</span>}
+    <div className="task-card fadein" style={{ background: "#ffffff04", borderRadius: 3, borderLeft: `2px solid ${color}`, opacity: task.done ? 0.28 : 1, overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 7, padding: "8px 10px" }}>
+        <div style={{ display: "flex", flexDirection: "column", flexShrink: 0, marginTop: 1 }}>
+          <button className="reorder-btn" onClick={onMoveUp}>▲</button>
+          <button className="reorder-btn" onClick={onMoveDown}>▼</button>
+        </div>
+        <button onClick={handleToggle}
+          style={{ width: 13, height: 13, marginTop: 2, borderRadius: 2, border: `1px solid ${color}55`, background: task.done ? color : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+          {task.done && <span style={{ color: "#000", fontSize: 8, fontWeight: 700 }}>✓</span>}
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: 13, color: "#ddd", lineHeight: 1.4, textDecoration: task.done ? "line-through" : "none", flex: 1, wordBreak: "break-word", letterSpacing: 0.2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 13, color: "#ddd", lineHeight: 1.4, textDecoration: task.done ? "line-through" : "none", flex: 1, wordBreak: "break-word" }}>
               {task.text}
             </span>
             {task.subtasks.length > 0 && (
-              <span style={{ fontSize: 10, color: color + "88", whiteSpace: "nowrap" }}>{doneCount}/{task.subtasks.length}</span>
+              <span style={{ fontSize: 10, color: color + "55", whiteSpace: "nowrap" }}>{doneCount}/{task.subtasks.length}</span>
             )}
           </div>
           {task.subtasks.length > 0 && (
-            <div style={{ height: 2, background: "#ffffff0e", borderRadius: 2, marginTop: 5, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${(doneCount / task.subtasks.length) * 100}%`, background: color, transition: "width 0.3s", borderRadius: 2 }}/>
+            <div style={{ height: 1, background: "#ffffff08", borderRadius: 1, marginTop: 5, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${(doneCount / task.subtasks.length) * 100}%`, background: color, transition: "width 0.3s" }}/>
             </div>
           )}
-          <div style={{ display: "flex", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, marginTop: 3, flexWrap: "wrap" }}>
             {task.created_at && (
-              <span style={{ fontSize: 10, color: "#3a3a3a", letterSpacing: 0.3 }}>
-                added {new Date(task.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              <span style={{ fontSize: 10, color: "#222" }}>
+                {new Date(task.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
               </span>
             )}
             {task.completed_at && (
-              <span style={{ fontSize: 10, color: color + "66", letterSpacing: 0.3 }}>
-                done {new Date(task.completed_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              <span style={{ fontSize: 10, color: color + "44" }}>
+                ✓ {new Date(task.completed_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
               </span>
+            )}
+            {task.focus_sessions > 0 && (
+              <span style={{ fontSize: 10, color: "#2a2a2a" }}>◎ {task.focus_sessions}</span>
             )}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 1, flexShrink: 0, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 2, flexShrink: 0, alignItems: "center" }}>
           <button onClick={() => setExpanded(e => !e)}
-            style={{ background: "none", border: "none", color: color + "55", fontSize: 10, padding: "1px 5px" }}>
-            {expanded ? "[-]" : "[+]"}
+            style={{ background: "none", border: "none", color: "#2a2a2a", fontSize: 12, padding: "1px 4px", lineHeight: 1 }}>
+            {expanded ? "−" : "+"}
           </button>
-          {isDoQ && !task.done && (
-            <button onClick={onFocus} title="Focus"
-              style={{ background: "none", border: `1px solid ${color}44`, color: color, fontSize: 9, borderRadius: 4, padding: "2px 6px", letterSpacing: 0.5 }}>
-              focus
-            </button>
-          )}
+          <button onClick={onFocus}
+            style={{ background: "none", border: `1px solid ${color}22`, color: color + "66", fontSize: 9, borderRadius: 2, padding: "2px 5px", letterSpacing: 0.4, textTransform: "uppercase" }}>
+            focus
+          </button>
           <button onClick={onDelete}
-            style={{ background: "none", border: "none", fontSize: 10, color: "#333", padding: "1px 4px" }}>x</button>
+            style={{ background: "none", border: "none", fontSize: 10, color: "#1e1e1e", padding: "1px 3px" }}>✕</button>
         </div>
       </div>
       {expanded && (
-        <div style={{ padding: "0 10px 10px 10px" }}>
+        <div style={{ padding: "0 10px 10px 34px" }}>
           <SubTasks subtasks={task.subtasks} setSubtasks={onUpdateSubtasks} color={color}/>
         </div>
       )}
@@ -230,13 +199,18 @@ export default function App() {
     try {
       const saved = localStorage.getItem("pm_tasks");
       return saved ? JSON.parse(saved) : [
-        { id: 1, text: "reply to urgent client email", quadrant: "do",       done: false, subtasks: [{ id: 2, text: "draft reply", done: false }, { id: 3, text: "attach report", done: false }] },
-        { id: 4, text: "plan next week goals",          quadrant: "schedule", done: false, subtasks: [{ id: 5, text: "review this week", done: false }, { id: 6, text: "set 3 priorities", done: false }] },
-        { id: 7, text: "fix printer jam",               quadrant: "delegate", done: false, subtasks: [] },
-        { id: 8, text: "browse social media",           quadrant: "eliminate",done: false, subtasks: [] },
+        { id: 1, text: "Reply to urgent client email", quadrant: "do",       done: false, subtasks: [{ id: 2, text: "Draft reply", done: false }, { id: 3, text: "Attach report", done: false }], created_at: new Date().toISOString(), completed_at: null },
+        { id: 4, text: "Plan next week's goals",       quadrant: "schedule", done: false, subtasks: [{ id: 5, text: "Review this week", done: false }], created_at: new Date().toISOString(), completed_at: null },
+        { id: 7, text: "Fix printer jam",              quadrant: "delegate", done: false, subtasks: [], created_at: new Date().toISOString(), completed_at: null },
+        { id: 8, text: "Browse social media",          quadrant: "eliminate",done: false, subtasks: [], created_at: new Date().toISOString(), completed_at: null },
       ];
     } catch { return []; }
   });
+
+  const [sessions, setSessions] = useState(() => {
+    try { const s = localStorage.getItem("pm_sessions"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+
   const [input, setInput] = useState("");
   const [urgent, setUrgent] = useState(false);
   const [important, setImportant] = useState(false);
@@ -248,23 +222,19 @@ export default function App() {
   const iRef = useRef(null);
   const sessionStartRef = useRef(null);
 
-  const [sessions, setSessions] = useState(() => {
-    try { const s = localStorage.getItem("pm_sessions"); return s ? JSON.parse(s) : []; } catch { return []; }
-  });
+  useEffect(() => { try { localStorage.setItem("pm_tasks",    JSON.stringify(tasks));    } catch {} }, [tasks]);
   useEffect(() => { try { localStorage.setItem("pm_sessions", JSON.stringify(sessions)); } catch {} }, [sessions]);
 
-  const logSession = (task, completed) => {
+  const updateTask = useCallback((id, fn) => setTasks(prev => prev.map(t => t.id === id ? fn(t) : t)), []);
+
+  const logSession = useCallback((task, completed) => {
     if (!sessionStartRef.current) return;
     const mins = Math.round((Date.now() - sessionStartRef.current) / 60000 * 10) / 10;
     if (mins < 0.1) return;
     setSessions(prev => [...prev, {
-      task_id: task.id,
-      task_text: task.text,
-      quadrant: task.quadrant,
+      task_id: task.id, task_text: task.text, quadrant: task.quadrant,
       started_at: new Date(sessionStartRef.current).toISOString(),
-      ended_at: new Date().toISOString(),
-      duration_mins: mins,
-      completed,
+      ended_at: new Date().toISOString(), duration_mins: mins, completed,
     }]);
     updateTask(task.id, t => ({
       ...t,
@@ -272,18 +242,13 @@ export default function App() {
       total_focus_mins: Math.round(((t.total_focus_mins || 0) + mins) * 10) / 10,
     }));
     sessionStartRef.current = null;
-  };
+  }, [updateTask]);
 
   useEffect(() => {
     if (running) {
       if (!sessionStartRef.current) sessionStartRef.current = Date.now();
       iRef.current = setInterval(() => setTimer(t => {
-        if (t <= 1) {
-          clearInterval(iRef.current);
-          setRunning(false);
-          if (focusTask) logSession(focusTask, true);
-          return 0;
-        }
+        if (t <= 1) { clearInterval(iRef.current); setRunning(false); if (focusTask) logSession(focusTask, true); return 0; }
         return t - 1;
       }), 1000);
     } else clearInterval(iRef.current);
@@ -297,183 +262,156 @@ export default function App() {
     setInput(""); setUrgent(false); setImportant(false);
   };
 
-  useEffect(() => { try { localStorage.setItem("pm_tasks", JSON.stringify(tasks)); } catch {} }, [tasks]);
-
-  const updateTask = (id, fn) => setTasks(prev => prev.map(t => t.id === id ? fn(t) : t));
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   const topTask = tasks.find(t => t.quadrant === "do" && !t.done) || tasks.find(t => !t.done);
-  const openFocus = task => { setFocusTask(task); setFocusMode(true); setTimer(25 * 60); setRunning(false); };
+  const openFocus = task => { setFocusTask(task); setFocusMode(true); setTimer(25 * 60); setRunning(false); sessionStartRef.current = null; };
+
+  const moveTask = (id, quadrant, dir) => {
+    setTasks(prev => {
+      const qTasks = prev.filter(t => t.quadrant === quadrant);
+      const idx = qTasks.findIndex(t => t.id === id);
+      const swap = idx + dir;
+      if (swap < 0 || swap >= qTasks.length) return prev;
+      const newOrder = [...qTasks];
+      [newOrder[idx], newOrder[swap]] = [newOrder[swap], newOrder[idx]];
+      const others = prev.filter(t => t.quadrant !== quadrant);
+      return [...others, ...newOrder];
+    });
+  };
 
   const exportCSV = () => {
-    // --- tasks sheet ---
     const taskHeaders = ["id","task","quadrant","done","created_at","completed_at","subtasks_total","subtasks_done","focus_sessions","total_focus_mins"];
-    const taskRows = tasks.map(t => [
-      t.id,
-      `"${t.text.replace(/"/g,'""')}"`,
-      t.quadrant,
-      t.done,
-      t.created_at || "",
-      t.completed_at || "",
-      t.subtasks.length,
-      t.subtasks.filter(s => s.done).length,
-      t.focus_sessions || 0,
-      t.total_focus_mins || 0,
-    ]);
-    const taskCSV = [taskHeaders, ...taskRows].map(r => r.join(",")).join("\n");
-
-    // --- sessions sheet ---
+    const taskRows = tasks.map(t => [t.id, `"${t.text.replace(/"/g,'""')}"`, t.quadrant, t.done, t.created_at||"", t.completed_at||"", t.subtasks.length, t.subtasks.filter(s=>s.done).length, t.focus_sessions||0, t.total_focus_mins||0]);
+    const taskCSV = [taskHeaders,...taskRows].map(r=>r.join(",")).join("\n");
     const sessHeaders = ["task_id","task","quadrant","started_at","ended_at","duration_mins","completed"];
-    const sessRows = sessions.map(s => [
-      s.task_id,
-      `"${s.task_text.replace(/"/g,'""')}"`,
-      s.quadrant,
-      s.started_at,
-      s.ended_at,
-      s.duration_mins,
-      s.completed,
-    ]);
-    const sessCSV = [sessHeaders, ...sessRows].map(r => r.join(",")).join("\n");
-
+    const sessRows = sessions.map(s => [s.task_id, `"${s.task_text.replace(/"/g,'""')}"`, s.quadrant, s.started_at, s.ended_at, s.duration_mins, s.completed]);
+    const sessCSV = [sessHeaders,...sessRows].map(r=>r.join(",")).join("\n");
     const date = new Date().toISOString().slice(0,10);
-    [["tasks", taskCSV], ["sessions", sessCSV]].forEach(([name, csv]) => {
-      const blob = new Blob([csv], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `priority-matrix-${name}-${date}.csv`;
-      a.click(); URL.revokeObjectURL(url);
+    [["tasks",taskCSV],["sessions",sessCSV]].forEach(([name,csv]) => {
+      const blob = new Blob([csv],{type:"text/csv"}); const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href=url; a.download=`priority-matrix-${name}-${date}.csv`; a.click(); URL.revokeObjectURL(url);
     });
   };
 
   return (
     <>
       <style>{globalStyles}</style>
-      <div style={{ minHeight: "100vh", background: "#0e0e10", color: "#ccc", padding: "24px 20px 48px", display: "flex", flexDirection: "column", gap: 18 }}>
+      <div id="confetti-root" style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9999 }}/>
+
+      <div style={{ minHeight: "100vh", background: "#000", color: "#ccc", padding: "28px 24px 48px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 1400, margin: "0 auto" }}>
 
         {/* FOCUS OVERLAY */}
         {focusMode && (
-          <div style={{ position: "fixed", inset: 0, background: "#000000f4", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ background: "#131315", border: `1px solid ${QUADRANTS[0].color}28`, borderRadius: 16, padding: "40px 36px", textAlign: "center", maxWidth: 400, width: "90%" }}>
-              <p style={{ fontSize: 10, letterSpacing: 4, color: "#e05c42", marginBottom: 14, fontWeight: 600 }}>// FOCUS SESSION</p>
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: 10, opacity: 0.6 }}>
-                <Doodle id="do" color="#e05c42"/>
-              </div>
-              <p style={{ fontSize: 14, color: "#ddd", marginBottom: 24, lineHeight: 1.5, letterSpacing: 0.3 }}>{focusTask?.text || "—"}</p>
+          <div style={{ position: "fixed", inset: 0, background: "#000000f5", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ background: "#080808", border: "1px solid #1a1a1a", borderRadius: 6, padding: "44px 40px", textAlign: "center", maxWidth: 420, width: "90%" }}>
+              <p style={{ fontSize: 10, letterSpacing: 4, color: "#FF4500", marginBottom: 20, fontWeight: 500, textTransform: "uppercase" }}>Focus Session</p>
+              <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 18, color: "#ddd", marginBottom: 28, lineHeight: 1.5 }}>{focusTask?.text || "—"}</p>
               {focusTask?.subtasks?.length > 0 && (
-                <div style={{ marginBottom: 20, textAlign: "left", background: "#ffffff06", borderRadius: 8, padding: "10px 14px" }}>
+                <div style={{ marginBottom: 24, textAlign: "left", background: "#ffffff03", borderRadius: 3, padding: "10px 14px" }}>
                   {focusTask.subtasks.map(st => (
-                    <div key={st.id} style={{ fontSize: 11, color: st.done ? "#3a3a3a" : "#888", textDecoration: st.done ? "line-through" : "none", marginBottom: 5, letterSpacing: 0.3 }}>
-                      [{st.done ? "x" : " "}] {st.text}
+                    <div key={st.id} style={{ fontSize: 12, color: st.done ? "#222" : "#666", textDecoration: st.done ? "line-through" : "none", marginBottom: 5 }}>
+                      {st.done ? "✓" : "○"} {st.text}
                     </div>
                   ))}
                 </div>
               )}
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 88, color: "#fff", letterSpacing: 6, lineHeight: 1, marginBottom: 24 }}>{fmt(timer)}</div>
-              <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 16 }}>
-                <button onClick={() => {
-                    if (running && focusTask) logSession(focusTask, false);
-                    setRunning(r => !r);
-                  }}
-                  style={{ background: running ? "#222" : "#e05c42", color: running ? "#888" : "#fff", border: `1px solid ${running ? "#333" : "#e05c42"}`, borderRadius: 7, padding: "11px 24px", fontSize: 12, letterSpacing: 1, fontWeight: 600 }}>
-                  {running ? "[ pause ]" : "[ start ]"}
+              <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 80, color: "#fff", lineHeight: 1, marginBottom: 28, letterSpacing: 2 }}>{fmt(timer)}</div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 14 }}>
+                <button onClick={() => { if (running && focusTask) logSession(focusTask, false); setRunning(r => !r); }}
+                  style={{ background: running ? "#111" : "#FF4500", color: running ? "#444" : "#fff", border: `1px solid ${running ? "#1a1a1a" : "#FF4500"}`, borderRadius: 4, padding: "11px 28px", fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 500 }}>
+                  {running ? "Pause" : "Start"}
                 </button>
-                <button onClick={() => { if (focusTask) logSession(focusTask, false); setTimer(25 * 60); setRunning(false); sessionStartRef.current = null; }}
-                  style={{ background: "transparent", color: "#555", border: "1px solid #2a2a2e", borderRadius: 7, padding: "11px 18px", fontSize: 12, letterSpacing: 1 }}>
-                  [ reset ]
+                <button onClick={() => { if (focusTask) logSession(focusTask, false); setTimer(25*60); setRunning(false); sessionStartRef.current = null; }}
+                  style={{ background: "transparent", color: "#333", border: "1px solid #111", borderRadius: 4, padding: "11px 20px", fontSize: 12 }}>
+                  Reset
                 </button>
               </div>
               <button onClick={() => { if (running && focusTask) logSession(focusTask, false); setFocusMode(false); setRunning(false); sessionStartRef.current = null; }}
-                style={{ background: "none", border: "1px solid #1e1e22", color: "#444", borderRadius: 7, padding: "7px 18px", fontSize: 11, letterSpacing: 0.5 }}>
-                exit focus mode
+                style={{ background: "none", border: "none", color: "#2a2a2a", fontSize: 11, letterSpacing: 0.5, marginTop: 4 }}>
+                Exit focus mode
               </button>
             </div>
           </div>
         )}
 
         {/* HEADER */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "1px solid #111", paddingBottom: 20 }}>
           <div>
-            <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 46, letterSpacing: 5, color: "#f0f0f0", lineHeight: 1 }}>PRIORITY MATRIX</h1>
-            <p style={{ fontSize: 12, color: "#666", marginTop: 5, letterSpacing: 1.5 }}>// tag it — break it down — ship it</p>
+            <p style={{ fontSize: 10, letterSpacing: 3, color: "#FF4500", marginBottom: 8, textTransform: "uppercase", fontWeight: 500 }}>Priority Matrix</p>
+            <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 36, color: "#fff", lineHeight: 1.1, fontWeight: 400 }}>
+              What needs<br/><em>your attention?</em>
+            </h1>
           </div>
-          {topTask && (
-            <button onClick={() => openFocus(topTask)}
-              style={{ background: "transparent", color: "#e05c42", border: "1px solid #e05c4255", borderRadius: 7, padding: "9px 16px", fontSize: 11, letterSpacing: 1, fontWeight: 600 }}>
-              [ focus on top task ]
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {topTask && (
+              <button onClick={() => openFocus(topTask)}
+                style={{ background: "transparent", color: "#FF4500", border: "1px solid #FF450033", borderRadius: 3, padding: "8px 14px", fontSize: 11, letterSpacing: 1, textTransform: "uppercase", fontWeight: 500 }}>
+                Focus →
+              </button>
+            )}
+            <button onClick={exportCSV}
+              style={{ background: "none", border: "1px solid #111", borderRadius: 3, color: "#333", fontSize: 11, padding: "8px 14px", letterSpacing: 0.8, textTransform: "uppercase" }}>
+              Export CSV
             </button>
-          )}
+          </div>
         </div>
 
         {/* ADD BAR */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "#141416", borderRadius: 10, padding: "11px 14px", border: "1px solid #1e1e22" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "#080808", borderRadius: 3, padding: "10px 14px", border: "1px solid #111" }}>
           <input
-            style={{ flex: 1, minWidth: 180, background: "transparent", border: "none", color: "#ddd", padding: "5px 4px", fontSize: 13, outline: "none", letterSpacing: 0.3 }}
-            placeholder="// what needs to get done?"
+            style={{ flex: 1, minWidth: 200, background: "transparent", border: "none", color: "#ddd", padding: "5px 4px", fontSize: 14, outline: "none" }}
+            placeholder="Add a task…"
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && addTask()}/>
           <button className="tag-btn" onClick={() => setUrgent(u => !u)}
-            style={{ borderColor: urgent ? "#e05c42" : "#252528", background: urgent ? "#e05c4214" : "transparent", color: urgent ? "#e05c42" : "#666" }}>
-            urgent
+            style={{ borderColor: urgent ? "#FF4500" : "#1a1a1a", background: urgent ? "#FF450010" : "transparent", color: urgent ? "#FF4500" : "#333" }}>
+            Urgent
           </button>
           <button className="tag-btn" onClick={() => setImportant(i => !i)}
-            style={{ borderColor: important ? "#e8a825" : "#252528", background: important ? "#e8a82514" : "transparent", color: important ? "#e8a825" : "#666" }}>
-            important
+            style={{ borderColor: important ? "#C8A84B" : "#1a1a1a", background: important ? "#C8A84B10" : "transparent", color: important ? "#C8A84B" : "#333" }}>
+            Important
           </button>
           <button onClick={addTask}
-            style={{ background: "#f0f0f0", color: "#0e0e10", border: "none", borderRadius: 7, padding: "9px 20px", fontSize: 12, fontWeight: 700, letterSpacing: 1 }}>
-            + add
+            style={{ background: "#fff", color: "#000", border: "none", borderRadius: 3, padding: "8px 20px", fontSize: 12, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>
+            Add
           </button>
-        </div>
-
-        {/* HINT ROW */}
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          {[
-            { t: "urgent + important  ->  DO FIRST",   c: "#e05c42" },
-            { t: "important only      ->  SCHEDULE",   c: "#e8a825" },
-            { t: "urgent only         ->  DELEGATE",   c: "#3dbdcc" },
-            { t: "neither            ->  ELIMINATE",   c: "#888899" },
-          ].map(h => (
-            <span key={h.t} style={{ fontSize: 10, color: h.c + "77", letterSpacing: 0.5 }}>{h.t}</span>
-          ))}
         </div>
 
         {/* MATRIX */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, flex: 1 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, flex: 1 }}>
           {QUADRANTS.map(q => {
             const qTasks = tasks.filter(t => t.quadrant === q.id);
             return (
               <div key={q.id} className="qdrop"
-                style={{ background: q.bg, border: `1px solid ${q.border}33`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8, minHeight: 240 }}
+                style={{ background: q.bg, border: "1px solid #111", borderTop: `2px solid ${q.color}`, borderRadius: 3, padding: 14, display: "flex", flexDirection: "column", gap: 8, minHeight: 220 }}
                 onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); }}
                 onDragLeave={e => e.currentTarget.classList.remove("drag-over")}
-                onDrop={e => {
-                  e.currentTarget.classList.remove("drag-over");
-                  if (dragId != null) { setTasks(prev => prev.map(t => t.id === dragId ? { ...t, quadrant: q.id } : t)); setDragId(null); }
-                }}>
+                onDrop={e => { e.currentTarget.classList.remove("drag-over"); if (dragId != null) { setTasks(prev => prev.map(t => t.id === dragId ? { ...t, quadrant: q.id } : t)); setDragId(null); } }}>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <div>
-                    <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 2.5, color: q.color }}>{q.label}</div>
-                    <div style={{ fontSize: 10, color: "#666", letterSpacing: 0.8, marginTop: 2 }}>{q.sub}</div>
-                    <div style={{ fontSize: 11, color: q.color + "99", marginTop: 5, letterSpacing: 0.3, fontStyle: "italic" }}>{q.desc}</div>
+                    <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 15, color: "#fff", fontWeight: 400 }}>{q.label}</div>
+                    <div style={{ fontSize: 10, color: "#2a2a2a", letterSpacing: 0.8, marginTop: 2, textTransform: "uppercase" }}>{q.sub}</div>
                   </div>
-                  <div className="doodle-wrap" style={{ opacity: 0.5, flexShrink: 0 }}>
-                    <Doodle id={q.id} color={q.color}/>
-                  </div>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: q.color, opacity: 0.7 }}/>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
                   {qTasks.length === 0 && (
-                    <p style={{ color: "#333", fontSize: 12, textAlign: "center", marginTop: 24, letterSpacing: 0.5 }}>// drop tasks here</p>
+                    <p style={{ color: "#181818", fontSize: 12, textAlign: "center", marginTop: 20 }}>Drop tasks here</p>
                   )}
-                  {qTasks.map(task => (
+                  {qTasks.map((task, idx) => (
                     <div key={task.id} draggable onDragStart={() => setDragId(task.id)}>
                       <TaskCard
-                        task={task} color={q.color} isDoQ={q.id === "do"}
+                        task={task} color={q.color}
                         onToggle={() => updateTask(task.id, t => ({ ...t, done: !t.done, completed_at: !t.done ? new Date().toISOString() : null }))}
                         onDelete={() => { setTasks(prev => prev.filter(t => t.id !== task.id)); if (focusTask?.id === task.id) setFocusTask(null); }}
                         onFocus={() => openFocus(task)}
-                        onUpdateSubtasks={subs => updateTask(task.id, t => ({ ...t, subtasks: subs }))}/>
+                        onUpdateSubtasks={subs => updateTask(task.id, t => ({ ...t, subtasks: subs }))}
+                        onMoveUp={() => moveTask(task.id, q.id, -1)}
+                        onMoveDown={() => moveTask(task.id, q.id, 1)}
+                      />
                     </div>
                   ))}
                 </div>
@@ -482,25 +420,23 @@ export default function App() {
           })}
         </div>
 
-        {/* STATS */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", borderTop: "1px solid #1a1a1e", paddingTop: 16, alignItems: "center" }}>
+        {/* STATS BAR */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", borderTop: "1px solid #111", paddingTop: 14 }}>
           {QUADRANTS.map(q => {
             const total = tasks.filter(t => t.quadrant === q.id).length;
             const done  = tasks.filter(t => t.quadrant === q.id && t.done).length;
             return (
-              <div key={q.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: "#131315", borderRadius: 7, padding: "7px 14px", gap: 2 }}>
-                <span style={{ color: q.color + "cc", fontFamily: "'Bebas Neue', sans-serif", fontSize: 11, letterSpacing: 1.5 }}>{q.label}</span>
-                <span style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#777" }}>{done}/{total}</span>
+              <div key={q.id} style={{ display: "flex", alignItems: "center", gap: 7, background: "#080808", borderRadius: 3, padding: "6px 12px", border: "1px solid #111" }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: q.color, opacity: 0.7 }}/>
+                <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 13, color: "#fff" }}>{done}/{total}</span>
+                <span style={{ fontSize: 10, color: "#2a2a2a", textTransform: "uppercase", letterSpacing: 0.5 }}>{q.label}</span>
               </div>
             );
           })}
-          <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", alignItems: "center", background: "#131315", borderRadius: 7, padding: "7px 16px", gap: 2 }}>
-            <span style={{ color: "#888", fontSize: 10, letterSpacing: 1.5 }}>TOTAL</span>
-            <span style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#ddd" }}>{tasks.filter(t => t.done).length}/{tasks.length}</span>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 7, background: "#080808", borderRadius: 3, padding: "6px 14px", border: "1px solid #111" }}>
+            <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 13, color: "#fff" }}>{tasks.filter(t => t.done).length}/{tasks.length}</span>
+            <span style={{ fontSize: 10, color: "#333", textTransform: "uppercase", letterSpacing: 0.5 }}>Total</span>
           </div>
-          <button onClick={exportCSV} style={{ marginLeft: 8, background: "none", border: "1px solid #2a2a2e", borderRadius: 7, color: "#666", fontSize: 11, padding: "7px 14px", letterSpacing: 0.8, cursor: "pointer" }}>
-            [ export csv ]
-          </button>
         </div>
 
       </div>
