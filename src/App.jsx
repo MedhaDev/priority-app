@@ -246,11 +246,44 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [dragId, setDragId] = useState(null);
   const iRef = useRef(null);
+  const sessionStartRef = useRef(null);
+
+  const [sessions, setSessions] = useState(() => {
+    try { const s = localStorage.getItem("pm_sessions"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  useEffect(() => { try { localStorage.setItem("pm_sessions", JSON.stringify(sessions)); } catch {} }, [sessions]);
+
+  const logSession = (task, completed) => {
+    if (!sessionStartRef.current) return;
+    const mins = Math.round((Date.now() - sessionStartRef.current) / 60000 * 10) / 10;
+    if (mins < 0.1) return;
+    setSessions(prev => [...prev, {
+      task_id: task.id,
+      task_text: task.text,
+      quadrant: task.quadrant,
+      started_at: new Date(sessionStartRef.current).toISOString(),
+      ended_at: new Date().toISOString(),
+      duration_mins: mins,
+      completed,
+    }]);
+    updateTask(task.id, t => ({
+      ...t,
+      focus_sessions: (t.focus_sessions || 0) + 1,
+      total_focus_mins: Math.round(((t.total_focus_mins || 0) + mins) * 10) / 10,
+    }));
+    sessionStartRef.current = null;
+  };
 
   useEffect(() => {
     if (running) {
+      if (!sessionStartRef.current) sessionStartRef.current = Date.now();
       iRef.current = setInterval(() => setTimer(t => {
-        if (t <= 1) { clearInterval(iRef.current); setRunning(false); return 0; }
+        if (t <= 1) {
+          clearInterval(iRef.current);
+          setRunning(false);
+          if (focusTask) logSession(focusTask, true);
+          return 0;
+        }
         return t - 1;
       }), 1000);
     } else clearInterval(iRef.current);
@@ -270,6 +303,46 @@ export default function App() {
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   const topTask = tasks.find(t => t.quadrant === "do" && !t.done) || tasks.find(t => !t.done);
   const openFocus = task => { setFocusTask(task); setFocusMode(true); setTimer(25 * 60); setRunning(false); };
+
+  const exportCSV = () => {
+    // --- tasks sheet ---
+    const taskHeaders = ["id","task","quadrant","done","created_at","completed_at","subtasks_total","subtasks_done","focus_sessions","total_focus_mins"];
+    const taskRows = tasks.map(t => [
+      t.id,
+      `"${t.text.replace(/"/g,'""')}"`,
+      t.quadrant,
+      t.done,
+      t.created_at || "",
+      t.completed_at || "",
+      t.subtasks.length,
+      t.subtasks.filter(s => s.done).length,
+      t.focus_sessions || 0,
+      t.total_focus_mins || 0,
+    ]);
+    const taskCSV = [taskHeaders, ...taskRows].map(r => r.join(",")).join("\n");
+
+    // --- sessions sheet ---
+    const sessHeaders = ["task_id","task","quadrant","started_at","ended_at","duration_mins","completed"];
+    const sessRows = sessions.map(s => [
+      s.task_id,
+      `"${s.task_text.replace(/"/g,'""')}"`,
+      s.quadrant,
+      s.started_at,
+      s.ended_at,
+      s.duration_mins,
+      s.completed,
+    ]);
+    const sessCSV = [sessHeaders, ...sessRows].map(r => r.join(",")).join("\n");
+
+    const date = new Date().toISOString().slice(0,10);
+    [["tasks", taskCSV], ["sessions", sessCSV]].forEach(([name, csv]) => {
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `priority-matrix-${name}-${date}.csv`;
+      a.click(); URL.revokeObjectURL(url);
+    });
+  };
 
   return (
     <>
@@ -296,16 +369,19 @@ export default function App() {
               )}
               <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 88, color: "#fff", letterSpacing: 6, lineHeight: 1, marginBottom: 24 }}>{fmt(timer)}</div>
               <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 16 }}>
-                <button onClick={() => setRunning(r => !r)}
+                <button onClick={() => {
+                    if (running && focusTask) logSession(focusTask, false);
+                    setRunning(r => !r);
+                  }}
                   style={{ background: running ? "#222" : "#e05c42", color: running ? "#888" : "#fff", border: `1px solid ${running ? "#333" : "#e05c42"}`, borderRadius: 7, padding: "11px 24px", fontSize: 12, letterSpacing: 1, fontWeight: 600 }}>
                   {running ? "[ pause ]" : "[ start ]"}
                 </button>
-                <button onClick={() => { setTimer(25 * 60); setRunning(false); }}
+                <button onClick={() => { if (focusTask) logSession(focusTask, false); setTimer(25 * 60); setRunning(false); sessionStartRef.current = null; }}
                   style={{ background: "transparent", color: "#555", border: "1px solid #2a2a2e", borderRadius: 7, padding: "11px 18px", fontSize: 12, letterSpacing: 1 }}>
                   [ reset ]
                 </button>
               </div>
-              <button onClick={() => { setFocusMode(false); setRunning(false); }}
+              <button onClick={() => { if (running && focusTask) logSession(focusTask, false); setFocusMode(false); setRunning(false); sessionStartRef.current = null; }}
                 style={{ background: "none", border: "1px solid #1e1e22", color: "#444", borderRadius: 7, padding: "7px 18px", fontSize: 11, letterSpacing: 0.5 }}>
                 exit focus mode
               </button>
@@ -422,6 +498,9 @@ export default function App() {
             <span style={{ color: "#888", fontSize: 10, letterSpacing: 1.5 }}>TOTAL</span>
             <span style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#ddd" }}>{tasks.filter(t => t.done).length}/{tasks.length}</span>
           </div>
+          <button onClick={exportCSV} style={{ marginLeft: 8, background: "none", border: "1px solid #2a2a2e", borderRadius: 7, color: "#666", fontSize: 11, padding: "7px 14px", letterSpacing: 0.8, cursor: "pointer" }}>
+            [ export csv ]
+          </button>
         </div>
 
       </div>
