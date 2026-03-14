@@ -14,6 +14,9 @@ const globalStyles = `
   .task-card:hover .drag-handle { opacity: 1; }
   .drag-handle { opacity: 0; transition: opacity 0.15s; cursor: grab; color: #666; font-size: 13px; padding: 0 3px; user-select: none; line-height: 1; }
   .drag-handle:active { cursor: grabbing; }
+  .qdrop-header { }
+  .qdrop-header .q-trash { opacity: 0; transition: opacity 0.15s; }
+  .qdrop-header:hover .q-trash { opacity: 1; }
   .qdrop { transition: outline 0.1s; }
   .qdrop.drag-over { outline: 1px solid rgba(255,255,255,0.18) !important; }
   .drop-indicator { height: 2px; border-radius: 1px; margin: 2px 0; }
@@ -37,9 +40,6 @@ const globalStyles = `
   }
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: center; justify-content: center; }
   .modal-box { background: #0a0a0a; border: 1px solid #222; border-radius: 6px; padding: 40px 36px; max-width: 420px; width: 90%; text-align: center; }
-  @keyframes fadeInDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-  .date-actions { animation: fadeInDown 0.2s ease forwards; }
-  .date-action-btn { background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 11px; letter-spacing: 0.6px; cursor: pointer; padding: 2px 0; transition: color 0.15s; }
 `;
 
 const QUADRANTS = [
@@ -312,28 +312,16 @@ export default function App() {
     setNewDatePrompt(null);
   };
 
-  const navigateTo = (target) => { setCurrentDate(target); };
-
-  const handleCarryForward = () => {
-    const target = nextDay(currentDate);
+  const navigateTo = (target) => {
     const undone = tasks.filter(t => (t.date || todayStr()) === currentDate && !t.done);
-    if (!undone.length) return;
-    const copies = undone.map(t => ({
-      ...t,
-      id: nextId++,
-      subtasks: (t.subtasks || []).map(s => ({ ...s, id: nextId++ })),
-      date: target,
-      done: false,
-      completed_at: null,
-      created_at: new Date().toISOString(),
-    }));
-    setTasks(prev => [...prev, ...copies]);
-    setCurrentDate(target);
+    if (undone.length > 0) {
+      setNewDatePrompt({ targetDate: target, fromDate: currentDate, undoneCount: undone.length });
+    } else {
+      setCurrentDate(target);
+    }
   };
 
-  const handleClearAll = () => {
-    setTasks(prev => prev.filter(t => (t.date || todayStr()) !== currentDate));
-  };
+
 
   const [input, setInput] = useState("");
   const [urgent, setUrgent] = useState(false);
@@ -558,21 +546,6 @@ export default function App() {
                 </button>
               )}
             </div>
-            {/* Carry forward / Clear all — fades in when tasks exist on this date */}
-            {viewTasks.length > 0 && (
-              <div className="date-actions" style={{ display: "flex", gap: 14, alignItems: "center", justifyContent: "flex-end" }}>
-                {viewTasks.some(t => !t.done) && (
-                  <button className="date-action-btn" onClick={handleCarryForward}
-                    style={{ color: "#C8A84B" }}>
-                    carry forward →
-                  </button>
-                )}
-                <button className="date-action-btn" onClick={handleClearAll}
-                  style={{ color: "#555" }}>
-                  clear all
-                </button>
-              </div>
-            )}
             {/* Action buttons */}
             <div style={{ display: "flex", gap: 8 }}>
               {topTask && (
@@ -623,12 +596,21 @@ export default function App() {
                 onDragOver={e => { e.preventDefault(); setDragOverQuadrant(q.id); }}
                 onDrop={e => handleQuadrantDrop(e, q.id)}>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <div className="qdrop-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <div>
                     <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 15, color: "#fff", fontWeight: 400 }}>{q.label}</div>
                     <div style={{ fontSize: 10, color: "#555", letterSpacing: 0.8, marginTop: 2, textTransform: "uppercase" }}>{q.sub}</div>
                   </div>
-                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: q.color, opacity: 0.7 }}/>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {qTasks.length > 0 && (
+                      <button className="q-trash" onClick={() => setTasks(prev => prev.filter(t => !(t.quadrant === q.id && (t.date || todayStr()) === currentDate)))}
+                        title={`Clear ${q.label}`}
+                        style={{ background: "none", border: "none", color: "#555", fontSize: 12, padding: "1px 2px", lineHeight: 1 }}>
+                        ⌫
+                      </button>
+                    )}
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: q.color, opacity: 0.7 }}/>
+                  </div>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
