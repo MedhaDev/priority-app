@@ -16,7 +16,7 @@ const globalStyles = `
   .drag-handle:active { cursor: grabbing; }
   .qdrop { transition: outline 0.1s; }
   .qdrop.drag-over { outline: 1px solid rgba(255,255,255,0.18) !important; }
-  .drop-indicator { height: 2px; background: #FF4500; border-radius: 1px; margin: 2px 0; transition: opacity 0.1s; }
+  .drop-indicator { height: 2px; border-radius: 1px; margin: 2px 0; }
   @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
   .fadein { animation: fadeIn 0.18s ease forwards; }
   @keyframes confettiBurst {
@@ -146,7 +146,7 @@ function TaskCard({ task, color, onToggle, onDelete, onFocus, onUpdateSubtasks, 
 
   return (
     <>
-      {isDragOver && <div className="drop-indicator"/>}
+      {isDragOver && <div className="drop-indicator" style={{ background: color }}/>}
       <div className="task-card fadein"
         id={`task-${task.id}`}
         style={{ background: "#ffffff04", borderRadius: 3, borderLeft: `2px solid ${color}`, opacity: task.done ? 0.3 : 1, overflow: "hidden" }}
@@ -278,18 +278,46 @@ export default function App() {
     localStorage.setItem("pm_last_date", today);
   }, []);
 
-  const handleCarryOver = () => {
-    const today = todayStr();
-    setTasks(prev => prev.map(t =>
-      !t.done && t.date !== today ? { ...t, date: today } : t
-    ));
-    setCurrentDate(today);
+  // newDatePrompt: used when manually navigating forward to a date with no tasks
+  const [newDatePrompt, setNewDatePrompt] = useState(null); // { targetDate, fromDate, undoneCount }
+
+  const handleCarryOver = (modal) => {
+    // COPY undone tasks from fromDate to targetDate — originals stay on their date
+    const { targetDate, fromDate } = modal || newDayModal || {};
+    if (!targetDate || !fromDate) { setNewDayModal(null); setNewDatePrompt(null); return; }
+    const undone = tasks.filter(t => (t.date || todayStr()) === fromDate && !t.done);
+    const copies = undone.map(t => ({
+      ...t,
+      id: nextId++,
+      subtasks: (t.subtasks || []).map(s => ({ ...s, id: nextId++ })),
+      date: targetDate,
+      done: false,
+      completed_at: null,
+      created_at: new Date().toISOString(),
+    }));
+    setTasks(prev => [...prev, ...copies]);
+    setCurrentDate(targetDate);
     setNewDayModal(null);
+    setNewDatePrompt(null);
   };
 
-  const handleStartFresh = () => {
-    setCurrentDate(todayStr());
+  const handleStartFresh = (modal) => {
+    const { targetDate } = modal || newDayModal || {};
+    // Just navigate — today/targetDate starts empty, past dates unchanged
+    if (targetDate) setCurrentDate(targetDate);
     setNewDayModal(null);
+    setNewDatePrompt(null);
+  };
+
+  const navigateForward = () => {
+    const target = nextDay(currentDate);
+    const hasTasksOnTarget = tasks.some(t => (t.date || todayStr()) === target);
+    const undone = tasks.filter(t => (t.date || todayStr()) === currentDate && !t.done);
+    if (!hasTasksOnTarget && undone.length > 0) {
+      setNewDatePrompt({ targetDate: target, fromDate: currentDate, undoneCount: undone.length });
+    } else {
+      setCurrentDate(target);
+    }
   };
 
   const [input, setInput] = useState("");
@@ -349,39 +377,40 @@ export default function App() {
   };
 
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-  const viewTasks = tasks.filter(t => t.date === currentDate || !t.date);
+  const viewTasks = tasks.filter(t => (t.date || todayStr()) === currentDate);
   const topTask = viewTasks.find(t => t.quadrant === "do" && !t.done) || viewTasks.find(t => !t.done);
   const openFocus = task => { setFocusTask(task); setFocusMode(true); setTimer(25 * 60); setRunning(false); sessionStartRef.current = null; };
   const isToday = currentDate === todayStr();
 
   // Drag handlers
-  const handleDragStart = (id) => {
-    setDragId(id);
-  };
+  const handleDragStart = (id) => { setDragId(id); };
   const handleDragEnd = () => {
-    // If we have a dragOverId, reorder within quadrant
-    if (dragId != null && dragOverId != null && dragId !== dragOverId) {
-      setTasks(prev => {
-        const dragTask = prev.find(t => t.id === dragId);
-        const overTask = prev.find(t => t.id === dragOverId);
-        if (!dragTask || !overTask) return prev;
-        if (dragTask.quadrant === overTask.quadrant) {
-          // Reorder within quadrant
-          const qTasks = prev.filter(t => t.quadrant === dragTask.quadrant);
-          const others = prev.filter(t => t.quadrant !== dragTask.quadrant);
-          const fromIdx = qTasks.findIndex(t => t.id === dragId);
-          const toIdx = qTasks.findIndex(t => t.id === dragOverId);
-          const newQ = [...qTasks];
-          newQ.splice(fromIdx, 1);
-          newQ.splice(toIdx, 0, dragTask);
-          return [...others, ...newQ];
-        }
-        return prev;
-      });
-    }
-    setDragId(null);
-    setDragOverId(null);
-    setDragOverQuadrant(null);
+    // Clean up if drop didn't fire (e.g. dropped outside)
+    setDragId(null); setDragOverId(null); setDragOverQuadrant(null);
+  };
+  const handleQuadrantDrop = (e, targetQuadrantId) => {
+    e.preventDefault();
+    if (dragId == null) return;
+    setTasks(prev => {
+      const dragTask = prev.find(t => t.id === dragId);
+      if (!dragTask) return prev;
+      if (dragTask.quadrant === targetQuadrantId && dragOverId != null && dragOverId !== dragId) {
+        // Same quadrant: reorder
+        const qTasks = prev.filter(t => t.quadrant === targetQuadrantId);
+        const others = prev.filter(t => t.quadrant !== targetQuadrantId);
+        const fromIdx = qTasks.findIndex(t => t.id === dragId);
+        const toIdx = qTasks.findIndex(t => t.id === dragOverId);
+        if (fromIdx === -1 || toIdx === -1) return prev;
+        const newQ = [...qTasks];
+        newQ.splice(fromIdx, 1);
+        newQ.splice(toIdx, 0, dragTask);
+        return [...others, ...newQ];
+      } else {
+        // Different quadrant: just move it
+        return prev.map(t => t.id === dragId ? { ...t, quadrant: targetQuadrantId } : t);
+      }
+    });
+    setDragId(null); setDragOverId(null); setDragOverQuadrant(null);
   };
 
   const exportCSV = () => {
@@ -403,7 +432,7 @@ export default function App() {
       <style>{globalStyles}</style>
       <div id="confetti-root" style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9999 }}/>
 
-      {/* NEW DAY MODAL */}
+      {/* GOOD MORNING MODAL — on app open when system date changed */}
       {newDayModal && (
         <div className="modal-overlay">
           <div className="modal-box">
@@ -412,16 +441,41 @@ export default function App() {
               Good morning.
             </h2>
             <p style={{ fontSize: 13, color: "#888", marginBottom: 32, lineHeight: 1.6 }}>
-              You have <span style={{ color: "#ddd" }}>{newDayModal.undoneCount} unfinished task{newDayModal.undoneCount > 1 ? "s" : ""}</span> from {fmtDate(newDayModal.prevDate)}.<br/>What would you like to do?
+              You have <span style={{ color: "#ddd" }}>{newDayModal.undoneCount} unfinished task{newDayModal.undoneCount > 1 ? "s" : ""}</span> from {fmtDate(newDayModal.prevDate)}.<br/>What would you like to do with today?
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <button onClick={handleCarryOver}
+              <button onClick={() => handleCarryOver({ targetDate: todayStr(), fromDate: newDayModal.prevDate, undoneCount: newDayModal.undoneCount })}
                 style={{ background: "#fff", color: "#000", border: "none", borderRadius: 3, padding: "10px 22px", fontSize: 12, fontWeight: 600, letterSpacing: 0.8, textTransform: "uppercase" }}>
                 Carry over
               </button>
-              <button onClick={handleStartFresh}
+              <button onClick={() => handleStartFresh({ targetDate: todayStr() })}
                 style={{ background: "transparent", color: "#888", border: "1px solid #333", borderRadius: 3, padding: "10px 22px", fontSize: 12, letterSpacing: 0.8, textTransform: "uppercase" }}>
                 Start fresh
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW DATE PROMPT — compact, when manually navigating forward */}
+      {newDatePrompt && (
+        <div className="modal-overlay">
+          <div className="modal-box" style={{ padding: "32px 30px" }}>
+            <p style={{ fontSize: 10, letterSpacing: 3, color: "#C8A84B", marginBottom: 14, textTransform: "uppercase" }}>New Date</p>
+            <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, color: "#fff", marginBottom: 10, fontWeight: 400 }}>
+              {fmtDate(newDatePrompt.targetDate)}
+            </h2>
+            <p style={{ fontSize: 13, color: "#888", marginBottom: 28, lineHeight: 1.6 }}>
+              You have <span style={{ color: "#ddd" }}>{newDatePrompt.undoneCount} undone task{newDatePrompt.undoneCount > 1 ? "s" : ""}</span> from {fmtDate(newDatePrompt.fromDate)}.<br/>Copy them to this day, or start empty?
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button onClick={() => handleCarryOver(newDatePrompt)}
+                style={{ background: "#fff", color: "#000", border: "none", borderRadius: 3, padding: "9px 20px", fontSize: 12, fontWeight: 600, letterSpacing: 0.8, textTransform: "uppercase" }}>
+                Copy tasks
+              </button>
+              <button onClick={() => handleStartFresh(newDatePrompt)}
+                style={{ background: "transparent", color: "#888", border: "1px solid #333", borderRadius: 3, padding: "9px 20px", fontSize: 12, letterSpacing: 0.8, textTransform: "uppercase" }}>
+                Start empty
               </button>
             </div>
           </div>
@@ -480,7 +534,7 @@ export default function App() {
               <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 14, color: isToday ? "#fff" : "#aaa", minWidth: 130, textAlign: "center" }}>
                 {isToday ? "Today" : fmtDate(currentDate)}
               </span>
-              <button onClick={() => setCurrentDate(d => nextDay(d))}
+              <button onClick={navigateForward}
                 style={{ background: "none", border: "none", color: "#888", fontSize: 14, padding: "0 4px", lineHeight: 1 }}>›</button>
               {!isToday && (
                 <button onClick={() => setCurrentDate(todayStr())}
@@ -535,22 +589,9 @@ export default function App() {
             const qTasks = viewTasks.filter(t => t.quadrant === q.id);
             return (
               <div key={q.id} className="qdrop"
-                style={{ background: "#030303", border: "1px solid #111", borderTop: `2px solid ${q.color}`, borderRadius: 3, padding: 14, display: "flex", flexDirection: "column", gap: 8, minHeight: 220 }}
+                style={{ background: "#030303", border: dragOverQuadrant === q.id && dragId != null ? `1px solid ${q.color}55` : "1px solid #111", borderTop: `2px solid ${q.color}`, borderRadius: 3, padding: 14, display: "flex", flexDirection: "column", gap: 8, minHeight: 220 }}
                 onDragOver={e => { e.preventDefault(); setDragOverQuadrant(q.id); }}
-                onDrop={e => {
-                  e.preventDefault();
-                  // If dropped on the quadrant container (not a card), move to this quadrant
-                  if (dragId != null && dragOverId == null) {
-                    setTasks(prev => prev.map(t => t.id === dragId ? { ...t, quadrant: q.id } : t));
-                  } else if (dragId != null && dragOverQuadrant !== null) {
-                    // Move to different quadrant if drag-over quadrant differs
-                    const dragTask = tasks.find(t => t.id === dragId);
-                    if (dragTask && dragTask.quadrant !== q.id) {
-                      setTasks(prev => prev.map(t => t.id === dragId ? { ...t, quadrant: q.id } : t));
-                    }
-                  }
-                  setDragId(null); setDragOverId(null); setDragOverQuadrant(null);
-                }}>
+                onDrop={e => handleQuadrantDrop(e, q.id)}>
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <div>
