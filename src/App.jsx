@@ -37,6 +37,9 @@ const globalStyles = `
   }
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: center; justify-content: center; }
   .modal-box { background: #0a0a0a; border: 1px solid #222; border-radius: 6px; padding: 40px 36px; max-width: 420px; width: 90%; text-align: center; }
+  @keyframes fadeInDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .date-actions { animation: fadeInDown 0.2s ease forwards; }
+  .date-action-btn { background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 11px; letter-spacing: 0.6px; cursor: pointer; padding: 2px 0; transition: color 0.15s; }
 `;
 
 const QUADRANTS = [
@@ -309,13 +312,27 @@ export default function App() {
     setNewDatePrompt(null);
   };
 
-  const navigateTo = (target) => {
-    const undone = tasks.filter(t => (t.date || todayStr()) === currentDate && !t.done);
-    if (undone.length > 0) {
-      setNewDatePrompt({ targetDate: target, fromDate: currentDate, undoneCount: undone.length });
-    } else {
-      setCurrentDate(target);
-    }
+  const navigateTo = (target) => { setCurrentDate(target); };
+
+  const handleCarryForward = () => {
+    const today = todayStr();
+    const undone = tasks.filter(t => (t.date || today) === currentDate && !t.done);
+    if (!undone.length) return;
+    const copies = undone.map(t => ({
+      ...t,
+      id: nextId++,
+      subtasks: (t.subtasks || []).map(s => ({ ...s, id: nextId++ })),
+      date: today,
+      done: false,
+      completed_at: null,
+      created_at: new Date().toISOString(),
+    }));
+    setTasks(prev => [...prev, ...copies]);
+    setCurrentDate(today);
+  };
+
+  const handleClearAll = () => {
+    setTasks(prev => prev.filter(t => (t.date || todayStr()) !== currentDate));
   };
 
   const [input, setInput] = useState("");
@@ -541,6 +558,21 @@ export default function App() {
                 </button>
               )}
             </div>
+            {/* Carry forward / Clear all — fades in when tasks exist on this date */}
+            {viewTasks.length > 0 && (
+              <div className="date-actions" style={{ display: "flex", gap: 14, alignItems: "center", justifyContent: "flex-end" }}>
+                {viewTasks.some(t => !t.done) && (
+                  <button className="date-action-btn" onClick={handleCarryForward}
+                    style={{ color: "#C8A84B" }}>
+                    carry forward →
+                  </button>
+                )}
+                <button className="date-action-btn" onClick={handleClearAll}
+                  style={{ color: "#555" }}>
+                  clear all
+                </button>
+              </div>
+            )}
             {/* Action buttons */}
             <div style={{ display: "flex", gap: 8 }}>
               {topTask && (
