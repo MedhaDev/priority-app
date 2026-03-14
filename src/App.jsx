@@ -225,19 +225,35 @@ function TaskCard({ task, color, onToggle, onDelete, onFocus, onUpdateSubtasks, 
   );
 }
 
+/* ── ID MIGRATION: fix any duplicate IDs from old data ── */
+function deduplicateIds(tasks) {
+  let counter = Date.now(); // use timestamp base to guarantee uniqueness
+  return tasks.map(t => ({
+    ...t,
+    id: counter++,
+    subtasks: (t.subtasks || []).map(s => ({ ...s, id: counter++ })),
+  }));
+}
+
 /* ── APP ─────────────────────────────────────────── */
 export default function App() {
   const [tasks, setTasks] = useState(() => {
     try {
       const saved = localStorage.getItem("pm_tasks");
       const parsed = saved ? JSON.parse(saved) : [];
-      nextId = getSafeNextId(parsed);
-      return parsed.length ? parsed : [
-        { id: 1, text: "Reply to urgent client email", quadrant: "do",       done: false, subtasks: [{ id: 2, text: "Draft reply", done: false }], created_at: new Date().toISOString(), completed_at: null, date: todayStr() },
-        { id: 4, text: "Plan next week's goals",       quadrant: "schedule", done: false, subtasks: [], created_at: new Date().toISOString(), completed_at: null, date: todayStr() },
-        { id: 7, text: "Fix printer jam",              quadrant: "delegate", done: false, subtasks: [], created_at: new Date().toISOString(), completed_at: null, date: todayStr() },
-        { id: 8, text: "Browse social media",          quadrant: "eliminate",done: false, subtasks: [], created_at: new Date().toISOString(), completed_at: null, date: todayStr() },
-      ];
+      let initial;
+      if (parsed.length) {
+        initial = deduplicateIds(parsed); // always re-assign IDs on load to nuke any collisions
+      } else {
+        initial = [
+          { id: 1, text: "Reply to urgent client email", quadrant: "do",       done: false, subtasks: [{ id: 2, text: "Draft reply", done: false }], created_at: new Date().toISOString(), completed_at: null, date: todayStr() },
+          { id: 4, text: "Plan next week's goals",       quadrant: "schedule", done: false, subtasks: [], created_at: new Date().toISOString(), completed_at: null, date: todayStr() },
+          { id: 7, text: "Fix printer jam",              quadrant: "delegate", done: false, subtasks: [], created_at: new Date().toISOString(), completed_at: null, date: todayStr() },
+          { id: 8, text: "Browse social media",          quadrant: "eliminate",done: false, subtasks: [], created_at: new Date().toISOString(), completed_at: null, date: todayStr() },
+        ];
+      }
+      nextId = getSafeNextId(initial);
+      return initial;
     } catch { return []; }
   });
 
