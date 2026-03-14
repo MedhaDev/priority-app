@@ -309,11 +309,9 @@ export default function App() {
     setNewDatePrompt(null);
   };
 
-  const navigateForward = () => {
-    const target = nextDay(currentDate);
-    const hasTasksOnTarget = tasks.some(t => (t.date || todayStr()) === target);
+  const navigateTo = (target) => {
     const undone = tasks.filter(t => (t.date || todayStr()) === currentDate && !t.done);
-    if (!hasTasksOnTarget && undone.length > 0) {
+    if (undone.length > 0) {
       setNewDatePrompt({ targetDate: target, fromDate: currentDate, undoneCount: undone.length });
     } else {
       setCurrentDate(target);
@@ -529,15 +527,15 @@ export default function App() {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
             {/* Date nav */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#0a0a0a", border: "1px solid #222", borderRadius: 3, padding: "6px 12px" }}>
-              <button onClick={() => setCurrentDate(d => prevDay(d))}
+              <button onClick={() => navigateTo(prevDay(currentDate))}
                 style={{ background: "none", border: "none", color: "#888", fontSize: 14, padding: "0 4px", lineHeight: 1 }}>‹</button>
               <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 14, color: isToday ? "#fff" : "#aaa", minWidth: 130, textAlign: "center" }}>
                 {isToday ? "Today" : fmtDate(currentDate)}
               </span>
-              <button onClick={navigateForward}
+              <button onClick={() => navigateTo(nextDay(currentDate))}
                 style={{ background: "none", border: "none", color: "#888", fontSize: 14, padding: "0 4px", lineHeight: 1 }}>›</button>
               {!isToday && (
-                <button onClick={() => setCurrentDate(todayStr())}
+                <button onClick={() => navigateTo(todayStr())}
                   style={{ background: "none", border: "1px solid #333", borderRadius: 2, color: "#888", fontSize: 10, padding: "2px 7px", marginLeft: 4, letterSpacing: 0.5 }}>
                   today
                 </button>
