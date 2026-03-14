@@ -315,20 +315,20 @@ export default function App() {
   const navigateTo = (target) => { setCurrentDate(target); };
 
   const handleCarryForward = () => {
-    const today = todayStr();
-    const undone = tasks.filter(t => (t.date || today) === currentDate && !t.done);
+    const target = nextDay(currentDate);
+    const undone = tasks.filter(t => (t.date || todayStr()) === currentDate && !t.done);
     if (!undone.length) return;
     const copies = undone.map(t => ({
       ...t,
       id: nextId++,
       subtasks: (t.subtasks || []).map(s => ({ ...s, id: nextId++ })),
-      date: today,
+      date: target,
       done: false,
       completed_at: null,
       created_at: new Date().toISOString(),
     }));
     setTasks(prev => [...prev, ...copies]);
-    setCurrentDate(today);
+    setCurrentDate(target);
   };
 
   const handleClearAll = () => {
