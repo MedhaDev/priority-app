@@ -2,7 +2,7 @@
 
 A personal time management tool built to collect behavioral data on how I prioritize and complete tasks over time.
 
-**Live app:** https://statuesque-blancmange-e427de.netlify.app
+**Live app:** [link](https://task-priority-tracker.netlify.app/)
 
 ---
 
