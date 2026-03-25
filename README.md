@@ -23,7 +23,7 @@ Features include subtask breakdowns with auto-completion, drag-and-drop reorderi
 
 ## Why I built it
 
-This is a data collection instrument as much as a productivity app. I designed the schema, built the collection tool, and wired it to a real database — then used the data to build an analytics dashboard in Power BI.
+This is a data collection instrument as much as a productivity app. I designed the schema, built the collection tool, and wired it to a real database - then used the data to build an analytics dashboard in Power BI.
 
 The goal was to study my own working habits: when I focus, how long tasks actually take, which quadrant I spend the most time in, and whether focus sessions correlate with task completion.
 
