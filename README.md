@@ -23,9 +23,11 @@ Features include subtask breakdowns with auto-completion, drag-and-drop reorderi
 
 ## Why I built it
 
-This is a data collection instrument as much as a productivity app. I designed the schema, built the collection tool, and wired it to a real database - then used the data to build an analytics dashboard in Power BI.
+This is a data collection instrument as much as a productivity app. I designed the schema, built the collection tool, and wired it to a real database — then used the exported data to drive a behavioral analysis in a separate analytics project.
 
 The goal was to study my own working habits: when I focus, how long tasks actually take, which quadrant I spend the most time in, and whether focus sessions correlate with task completion.
+
+→ See the companion analysis repo: [priority-matrix-analysis](https://github.com/)
 
 ---
 
@@ -36,18 +38,18 @@ The goal was to study my own working habits: when I focus, how long tasks actual
 | Frontend | React + Vite |
 | Hosting | Netlify |
 | Database | Supabase (PostgreSQL) |
-| BI / Visualization | Power BI |
+| Analytics | Tableau |
 
 ---
 
 ## Data pipeline
 
 ```
-React App  →  Supabase (PostgreSQL)  →  Power BI Dashboard
- (writes)        (stores)                 (visualizes)
+React App  →  Supabase (PostgreSQL)  →  Tableau Dashboard
+ (writes)         (stores)                 (visualizes)
 ```
 
-Every task creation, completion, edit, and focus session is written to Supabase in real time. Power BI connects directly via the PostgreSQL connector and refreshes on demand.
+Every task creation, completion, edit, and focus session is written to Supabase in real time. Tableau connects directly via the PostgreSQL connector for on-demand analysis.
 
 ---
 
@@ -83,7 +85,7 @@ Every task creation, completion, edit, and focus session is written to Supabase 
 
 ## Synthetic data
 
-To demonstrate the full pipeline before accumulating sufficient real data, I generated 90 days of realistic synthetic task data using a custom Python script (`generate_synthetic_data.py`). The script models realistic behavioral patterns including day-of-week completion rates, quadrant distributions, crunch weeks, and focus session frequency.
+To demonstrate the full pipeline before accumulating sufficient real data, I generated 90 days of realistic synthetic task and session data using a custom Python script (`generate_synthetic_data.py`). The script models behavioral patterns including day-of-week completion rates, quadrant distributions, crunch periods, and focus session frequency.
 
 ---
 
@@ -96,6 +98,6 @@ To demonstrate the full pipeline before accumulating sufficient real data, I gen
 - [x] Daily date navigation with carry-forward modal
 - [x] Real-time Supabase sync
 - [x] Synthetic data generation (90 days)
-- [x] Power BI dashboard
+- [x] Tableau dashboard
 - [ ] Row Level Security (Supabase RLS)
-- [ ] Python behavioral analysis notebook
+- [ ] Multi-user auth
